@@ -20,12 +20,6 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     fun observeAll(): Flow<List<TransactionEntity>>
 
-    @Query("SELECT * FROM transactions ORDER BY timestamp DESC LIMIT :limit")
-    fun observeRecent(limit: Int): Flow<List<TransactionEntity>>
-
-    @Query("SELECT * FROM transactions WHERE categoryId = :categoryId ORDER BY timestamp DESC")
-    suspend fun getByCategory(categoryId: Long): List<TransactionEntity>
-
     @Query(
         """
         SELECT categoryId, COUNT(*) AS usageCount, MAX(timestamp) AS lastUsedAt
@@ -60,9 +54,6 @@ interface TransactionDao {
 
     @Insert
     suspend fun insert(transaction: TransactionEntity): Long
-
-    @Insert
-    suspend fun insertAll(transactions: List<TransactionEntity>): List<Long>
 
     @Update
     suspend fun update(transaction: TransactionEntity)

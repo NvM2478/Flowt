@@ -29,6 +29,9 @@ class CategoryRepository(
 
     suspend fun getAll(): List<Category> = categoryDao.getAll()
 
+    /** 响应式分类列表：分类被增删改后，界面自动刷新。 */
+    fun observeAll(): kotlinx.coroutines.flow.Flow<List<Category>> = categoryDao.observeAll()
+
     suspend fun getChildren(parentId: Long?): List<Category> = categoryDao.getChildren(parentId)
 
     /**

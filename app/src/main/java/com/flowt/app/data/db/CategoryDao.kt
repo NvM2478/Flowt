@@ -32,9 +32,6 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE path LIKE :prefix ESCAPE '\\' ORDER BY path")
     suspend fun getSubtree(prefix: String): List<Category>
 
-    @Query("SELECT * FROM categories WHERE parentId IS :parentId")
-    suspend fun getSiblings(parentId: Long?): List<Category>
-
     @Query("SELECT COUNT(*) FROM categories WHERE parentId IS :parentId AND name = :name AND id != :excludeId")
     suspend fun countSiblingsNamed(parentId: Long?, name: String, excludeId: Long): Int
 

@@ -57,6 +57,5 @@ data class TransactionEntity(
 ) {
     companion object {
         const val TYPE_EXPENSE = "expense"
-        const val TYPE_INCOME = "income"
     }
 }
