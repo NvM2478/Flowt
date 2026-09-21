@@ -82,6 +82,10 @@ fun FlowtApp(vm: AppViewModel) {
 
     // 设置页的二级页面状态提升到这里：它必须渲染在 Scaffold 外面才能盖住底部导航栏。
     var settingsPage by remember { mutableStateOf(SettingsPage.Root) }
+    // 二级页关闭后该落回哪个 tab。
+    // 从首页长按指标卡进来时记录的是"流水"，从设置 tab 进来时是"设置" ——
+    // 这样无论从哪进，关掉都回到出发点，不会把用户甩到别的页面。
+    var returnTabOnClose by remember { mutableStateOf<AppTab?>(null) }
 
     val transactions by vm.transactions.collectAsState()
     val categories by vm.categories.collectAsState()
@@ -160,6 +164,14 @@ fun FlowtApp(vm: AppViewModel) {
                             entryOpen = true
                         },
                         onLongPress = { transaction -> pendingDelete = transaction },
+                        // 长按指标卡直达「首页指标」设置。
+                        // 记录出发点（流水页），关闭二级页时回到这里 ——
+                        // 刻意**不改底部 tab**：用户只是打开一个二级菜单，
+                        // 不该顺手把主页面也切走。
+                        onLongPressMetric = {
+                            returnTabOnClose = AppTab.Ledger
+                            settingsPage = SettingsPage.Metrics
+                        },
                     )
 
                     AppTab.Report -> ReportScreen(
@@ -230,7 +242,15 @@ fun FlowtApp(vm: AppViewModel) {
         SettingsSubPageHost(
             vm = vm,
             page = settingsPage,
-            onClose = { settingsPage = SettingsPage.Root },
+            onClose = {
+                settingsPage = SettingsPage.Root
+                // 回到进入二级页之前的那个 tab（从首页长按进来的就回流水页）。
+                // 清掉标记，避免影响下一次从设置 tab 正常进入的情况。
+                returnTabOnClose?.let { tab ->
+                    scope.launch { pagerState.scrollToTab(tab.ordinal) }
+                }
+                returnTabOnClose = null
+            },
         )
     }
 }

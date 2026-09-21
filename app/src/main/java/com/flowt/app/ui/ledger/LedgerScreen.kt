@@ -86,6 +86,8 @@ fun LedgerScreen(
     metrics: List<MetricValue>,
     onEdit: (TransactionEntity, Offset) -> Unit,
     onLongPress: (TransactionEntity) -> Unit,
+    /** 长按指标卡：直达「首页指标」设置。 */
+    onLongPressMetric: () -> Unit,
 ) {
     val pathById = remember(categories) { categories.associate { it.id to it.path } }
     val dayGroups = remember(transactions, pathById) { buildDayGroups(transactions, pathById) }
@@ -96,7 +98,9 @@ fun LedgerScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (metrics.isNotEmpty()) {
-            item(key = "metrics") { MetricCardRow(metrics = metrics) }
+            item(key = "metrics") {
+                MetricCardRow(metrics = metrics, onLongPressMetric = onLongPressMetric)
+            }
         }
 
         if (dayGroups.isEmpty()) {
@@ -124,7 +128,7 @@ fun LedgerScreen(
  * 卡片组件与「首页指标」设置页共用，所以设置页里看到的就是首页真正的样子。
  */
 @Composable
-private fun MetricCardRow(metrics: List<MetricValue>) {
+private fun MetricCardRow(metrics: List<MetricValue>, onLongPressMetric: () -> Unit) {
     val rows = metrics.chunked(3)
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -139,6 +143,8 @@ private fun MetricCardRow(metrics: List<MetricValue>) {
                     MetricCard(
                         title = metric.displayName,
                         amountCents = metric.amountCents,
+                        // 长按直达「首页指标」设置；单击无动作（首页的卡片是纯展示）
+                        onLongClick = onLongPressMetric,
                         modifier = Modifier.weight(1f),
                     )
                 }
