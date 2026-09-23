@@ -12,11 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,14 +51,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardActions
 import com.flowt.app.data.db.Category
 import com.flowt.app.data.db.TransactionEntity
 import com.flowt.app.ui.AppViewModel
-import com.flowt.app.ui.theme.subtleTextColor
+import com.flowt.app.ui.components.CategoryPickerSheet
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -388,87 +383,6 @@ private fun CategorySelector(
                         ),
                     ) {
                         Text(path, style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * 分类下钻选择器：默认显示一级分类；点有子类的分类继续下钻；
- * 点叶子分类直接选中。每层只加一次点击 —— 这就是"3 步封顶"在多层树上的实现方式。
- */
-@Composable
-private fun CategoryPickerSheet(
-    categories: List<Category>,
-    childrenByParent: Map<Long?, List<Category>>,
-    onPick: (Long) -> Unit,
-) {
-    var currentParentId by remember { mutableStateOf<Long?>(null) }
-    val pathById = remember(categories) { categories.associate { it.id to it.path } }
-
-    val currentChildren = childrenByParent[currentParentId].orEmpty()
-        .sortedWith(compareBy({ it.sortOrder }, { it.name }))
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 200.dp, max = 460.dp)
-            .padding(horizontal = 16.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = currentParentId?.let { pathById[it] } ?: "全部分类",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            if (currentParentId != null) {
-                TextButton(onClick = { currentParentId = null }) { Text("返回顶层") }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        if (currentChildren.isEmpty()) {
-            Text(
-                text = "这里还没有分类。去「设置 → 分类管理」建几个吧。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = subtleTextColor(),
-                modifier = Modifier.padding(vertical = 24.dp),
-            )
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(currentChildren, key = { it.id }) { node ->
-                    val hasChildren = childrenByParent[node.id].orEmpty().isNotEmpty()
-                    Card(
-                        onClick = {
-                            if (hasChildren) currentParentId = node.id else onPick(node.id)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(node.name, style = MaterialTheme.typography.bodyLarge)
-                            if (hasChildren) {
-                                Text(
-                                    text = "›",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = subtleTextColor(),
-                                )
-                            }
-                        }
                     }
                 }
             }

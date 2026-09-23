@@ -29,6 +29,31 @@ data class SavedTheme(
 )
 
 /**
+ * 一次已完成的导入，用于「这个文件已经导过了」的提醒。
+ *
+ * 为什么需要它：行级指纹里含分类 id，用户第二次导入同一个文件时若改了某个分类的
+ * 去向，指纹就不同了，只靠行级判重会把同一批数据放进库两遍。文件内容哈希与
+ * 分类映射、列绑定都无关，所以这一层挡得住。
+ */
+data class ImportedFileRecord(
+    /** 文件内容的 SHA-256。与文件名无关——改了名仍是同一个文件，照样认得出。 */
+    val hash: String,
+    val fileName: String,
+    val importedAt: Long,
+    val count: Int,
+    /**
+     * 那一次导入的批次号，写在每条流水的 `source` 上。
+     *
+     * 「撤销上次导入」按它整批删除。之所以记批次号而不是流水 id 列表：
+     * 编辑流水时 `source` 是保留的（只改被编辑的字段），所以用户改过金额、分类、
+     * 备注之后照样撤得掉 —— 而库里只多存了一个字符串，不是几千个 id。
+     *
+     * 旧版本的记录没有这个字段（空串），那条记录就撤销不了，但仍可用于重复提醒。
+     */
+    val batchSource: String,
+)
+
+/**
  * UI 偏好设置。
  *
  * 刻意**不放进 Room**：这里存的都是界面偏好（显示哪几个指标、用哪套配色），
@@ -52,6 +77,8 @@ data class AppPrefs(
     val savedThemes: List<SavedTheme> = emptyList(),
     /** 当前临时生效的角色覆盖（未保存的微调）。 */
     val roleOverrides: Map<String, Int> = emptyMap(),
+    /** 已导入过的文件（按内容哈希），用于导入前的重复提醒。 */
+    val importedFiles: List<ImportedFileRecord> = emptyList(),
 )
 
 class PrefsRepository(private val context: Context) {
@@ -62,6 +89,7 @@ class PrefsRepository(private val context: Context) {
         val SELECTED_THEME = stringPreferencesKey("selected_theme_id")
         val SAVED_THEMES = stringSetPreferencesKey("saved_themes")
         val ROLE_OVERRIDES = stringSetPreferencesKey("role_overrides")
+        val IMPORTED_FILES = stringSetPreferencesKey("imported_files")
 
         // 旧字段：仅用于一次性迁移，读过即可，不再写回
         val LEGACY_THEME_ID = stringPreferencesKey("theme_id")
@@ -77,6 +105,7 @@ class PrefsRepository(private val context: Context) {
             selectedThemeId = p[Keys.SELECTED_THEME] ?: migrateLegacySelection(p),
             savedThemes = decodeSavedThemes(p[Keys.SAVED_THEMES]),
             roleOverrides = decodeOverrides(p[Keys.ROLE_OVERRIDES]),
+            importedFiles = decodeImportedFiles(p[Keys.IMPORTED_FILES]),
         )
     }
 
@@ -153,6 +182,29 @@ class PrefsRepository(private val context: Context) {
         }
     }
 
+    /** 记下一次成功导入。按 hash 去重，同一文件重复导入只保留最新一条。 */
+    suspend fun recordImportedFile(record: ImportedFileRecord) {
+        context.dataStore.edit { prefs ->
+            val updated = decodeImportedFiles(prefs[Keys.IMPORTED_FILES])
+                .filterNot { it.hash == record.hash } + record
+            prefs[Keys.IMPORTED_FILES] = encodeImportedFiles(updated)
+        }
+    }
+
+    /** 抹掉全部导入记录（清空数据时一并做掉）。 */
+    suspend fun clearImportedFiles() {
+        context.dataStore.edit { prefs -> prefs.remove(Keys.IMPORTED_FILES) }
+    }
+
+    /** 撤销导入时一并移除记录——撤销就是完全回滚，用户重导不该被警告。 */
+    suspend fun forgetImportedFile(hash: String) {
+        context.dataStore.edit { prefs ->
+            val updated = decodeImportedFiles(prefs[Keys.IMPORTED_FILES])
+                .filterNot { it.hash == hash }
+            prefs[Keys.IMPORTED_FILES] = encodeImportedFiles(updated)
+        }
+    }
+
     // --- 编码工具 ---
     // DataStore Preferences 没有 Map/对象类型，这些数据量极小（最多十来个条目），
     // 用字符串集合编码即可，不值得为此引入序列化库。
@@ -191,6 +243,27 @@ class PrefsRepository(private val context: Context) {
             }.toMap()
             SavedTheme(name = name, overrides = overrides)
         }.sortedBy { it.name }
+
+    /** 文件名放最后一段：配合 split 的 limit，文件名里即便含 "|" 也不会被切断。 */
+    private fun encodeImportedFiles(records: List<ImportedFileRecord>): Set<String> =
+        records.map { "${it.hash}|${it.importedAt}|${it.count}|${it.batchSource}|${it.fileName}" }.toSet()
+
+    /** 兼容旧格式：早期只存了 4 段（没有批次号），那条记录撤销不了但还能做重复提醒。 */
+    private fun decodeImportedFiles(raw: Set<String>?): List<ImportedFileRecord> =
+        raw.orEmpty().mapNotNull { entry ->
+            val parts = entry.split('|', limit = 5)
+            if (parts.size < 4) return@mapNotNull null
+            val importedAt = parts[1].toLongOrNull() ?: return@mapNotNull null
+            val count = parts[2].toIntOrNull() ?: return@mapNotNull null
+            val hasBatch = parts.size == 5
+            ImportedFileRecord(
+                hash = parts[0],
+                fileName = if (hasBatch) parts[4] else parts[3],
+                importedAt = importedAt,
+                count = count,
+                batchSource = if (hasBatch) parts[3] else "",
+            )
+        }.sortedByDescending { it.importedAt }
 
     /** 老版本只存了 themeId + brightnessMode，这里转成新的单值选择。 */
     private fun migrateLegacySelection(p: Preferences): String {

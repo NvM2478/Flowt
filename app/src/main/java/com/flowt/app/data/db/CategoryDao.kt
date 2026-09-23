@@ -46,4 +46,12 @@ interface CategoryDao {
 
     @Query("DELETE FROM categories WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>): Int
+
+    /**
+     * 清空全部分类。
+     *
+     * 调用方**必须先清掉流水**：外键是 NO_ACTION，还有流水引用分类时这里会被数据库拒绝。
+     */
+    @Query("DELETE FROM categories")
+    suspend fun deleteAll(): Int
 }

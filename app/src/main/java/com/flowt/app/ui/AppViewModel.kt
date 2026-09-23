@@ -5,8 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.flowt.app.data.AppPrefs
 import com.flowt.app.data.CategoryRepository
+import com.flowt.app.data.ClearResult
 import com.flowt.app.data.PrefsRepository
 import com.flowt.app.data.TxRepository
+import com.flowt.app.data.bill.ExportService
+import com.flowt.app.data.bill.ImportService
 import com.flowt.app.data.db.Category
 import com.flowt.app.data.db.FlowtDatabase
 import com.flowt.app.data.db.TransactionEntity
@@ -26,6 +29,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val categoryRepo = CategoryRepository(db)
     val txRepo = TxRepository(db)
     val prefsRepo = PrefsRepository(app)
+
+    /** 账单文件的导入与导出。都是无状态的编排器，直接挂在这里由界面调用。 */
+    val importService = ImportService(db, txRepo, categoryRepo, prefsRepo)
+    val exportService = ExportService(txRepo, categoryRepo)
 
     val prefs: StateFlow<AppPrefs> = prefsRepo.prefs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppPrefs())
@@ -56,4 +63,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         txRepo.observeAll()
             .map { list -> MetricValue.computeEveryMetric(list) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * 清空流水与分类；[includeCategories] 为 true 时连分类树一起清。
+     *
+     * 顺带抹掉"这个文件导过了"的记录 —— 数据都清空了，还留着那些提醒，
+     * 用户重新导入备份时会莫名其妙。这一步走 DataStore、不在 Room 事务里，
+     * 万一失败也只是残留几条提醒，不影响账目本身。
+     */
+    suspend fun clearAllData(includeCategories: Boolean): ClearResult {
+        val result = txRepo.clearAll(includeCategories)
+        // 导入记录是附属信息：它清不掉也不该让"清空数据"看起来失败了 —— 那样用户会
+        // 卡在对话框里反复点，而账目其实早就清空了
+        runCatching { prefsRepo.clearImportedFiles() }
+        return result
+    }
 }

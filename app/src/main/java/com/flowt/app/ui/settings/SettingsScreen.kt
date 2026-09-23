@@ -5,10 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -55,23 +53,19 @@ fun SettingsScreen(
         item(key = "group_data") {
             SettingsEntryGroup {
                 SettingsEntry(
-                    title = "记账分类管理",
-                    subtitle = "建分类树、改名、删除",
+                    title = "分类管理",
                     onClick = onOpenCategoryManage,
                 )
                 SettingsEntry(
                     title = "首页指标",
-                    subtitle = "选择首页显示哪几个指标",
                     onClick = onOpenMetrics,
                 )
                 SettingsEntry(
                     title = "外观",
-                    subtitle = "配色方案与自定义颜色",
                     onClick = onOpenAppearance,
                 )
                 SettingsEntry(
                     title = "数据管理",
-                    subtitle = "导入账单、导出备份",
                     onClick = onOpenData,
                 )
             }
@@ -98,7 +92,6 @@ fun SettingsScreen(
             SettingsEntryGroup {
                 SettingsEntry(
                     title = "关于 Flowt",
-                    subtitle = "v1.0 · 数据只存在这台手机上",
                     onClick = null,
                 )
             }
@@ -116,7 +109,6 @@ private fun SettingsEntryGroup(content: @Composable () -> Unit) {
 @Composable
 private fun SettingsEntry(
     title: String,
-    subtitle: String,
     onClick: (() -> Unit)?,
 ) {
     Row(
@@ -128,19 +120,12 @@ private fun SettingsEntry(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = subtleTextColor(),
-            )
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
+        )
         if (onClick != null) {
             Text(
                 text = "›",
