@@ -1,15 +1,23 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
+# --- 构建产物 ---
 /build
 /captures
 .externalNativeBuild
 .cxx
+.gradle
+.kotlin
+
+# --- IDE 与机器相关配置 ---
+# 注：.idea 下有 10 个文件是早期提交带进来的，规则对已跟踪的文件无效 ——
+# 想真正生效需要先 `git rm -r --cached .idea`（只解除跟踪，本地文件不动）。
+.idea/
+*.iml
 local.properties
+
+# --- 操作系统 ---
+.DS_Store
+Thumbs.db
+
+# --- 签名与密钥：绝不入库 ---
+*.jks
+*.keystore
+keystore.properties
