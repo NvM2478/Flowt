@@ -21,6 +21,16 @@ Flowt 是纯本地记账 Android 应用（Kotlin + Jetpack Compose + Room），�
 
 依赖解析走阿里云镜像、Gradle 发行版走腾讯云镜像（`settings.gradle.kts` / `gradle/wrapper/gradle-wrapper.properties`），移除镜像在国内会直接超时。
 
+## 发版
+
+完整发版流程（版本号三处同步、签名、打 tag、GitHub Release）见 [docs/release.md](docs/release.md)。要点：tag 与 `versionName` 严格一致（`v0.1.0` ↔ `0.1.0`）；`versionCode` 只增不减；签名密钥 `flowt.jks` 与密码在 `local.properties`，均不入库。
+
+## 交互规范
+
+- **所有长按交互必须添加震动反馈**：`LocalHapticFeedback.current.performHapticFeedback(HapticFeedbackType.LongPress)`，参照首页流水条目 `TxRowItem` 的写法；
+- 使用 `combinedClickable` 时必须显式传 `hapticFeedbackEnabled = false` 禁用系统默认触觉，改由上面的手动触发 —— 否则系统触觉与手动触发叠加，长按会连续震动两次；
+- 破坏性操作（删除、覆盖保存等）必须保留二次确认或危险色警示，不得静默执行。
+
 ## 架构
 
 单 Activity（`MainActivity`）+ 全 Compose，**不引入 Navigation 库**，页面切换全是手写状态，集中在 [FlowtApp.kt](app/src/main/java/com/flowt/app/ui/FlowtApp.kt)：
@@ -43,15 +53,16 @@ Flowt 是纯本地记账 Android 应用（Kotlin + Jetpack Compose + Room），�
 ### 三个注册表：加功能通常是往表里加一行
 
 - `LedgerMetric.all`（[LedgerMetric.kt](app/src/main/java/com/flowt/app/metrics/LedgerMetric.kt)）：指标口径。加一项后首页卡片、设置页勾选、偏好存储自动跟上。`compute` 返回 `null` 表示"没有数据"（显示 `—`），与"支出 0 元"严格区分
-- `PresetTheme.all` + `ThemeVariant`（[PresetTheme.kt](app/src/main/java/com/flowt/app/ui/theme/PresetTheme.kt)）：配色方案，变体 id 形如 `violet@light`；设置页配色列表自动多出两行
-- `RoleKey`（[ColorRoles.kt](app/src/main/java/com/flowt/app/ui/theme/ColorRoles.kt)）：用户可自定义的 15 个颜色角色 → M3 色槽的映射。**一个角色可以写多个色槽，但两个角色绝不能写同一个色槽** —— 会互相覆盖，表现为"用户改了颜色却没生效"（现有代码为规避这点，指标卡用 `tertiaryContainer` 而非已被占用的 `primaryContainer`）
+- `PresetTheme.all`（[PresetTheme.kt](app/src/main/java/com/flowt/app/ui/theme/PresetTheme.kt)）：六套配色方案的注册表。深色方案构造时统一过 `neutralizeLargeSurfaces`（容器雾化 + 页面底纯黑），因此深色字面量里被它覆盖的槽（`primaryContainer` / `tertiaryContainer` / `surfaceContainerHighest` / `surface` 系页面三槽）改了不会生效
+- `RoleKey`（[ColorRoles.kt](app/src/main/java/com/flowt/app/ui/theme/ColorRoles.kt)）：用户可自定义的 19 个颜色角色，三分类 —— BASE（底色，随便改）、ON（配对文字，默认派生自 `pairsWith` 指向的底色并保证对比度 ≥4.5，可覆盖进覆盖态）、FREE（独立语义如支出红）。**一个角色可以写多个色槽，但两个角色绝不能写同一个色槽**（会互相覆盖，表现为"用户改了颜色却没生效"；现有规避：指标卡用 `tertiaryContainer` 而非已被记账页占用的 `primaryContainer`，导航栏文字/记账页文字不写槽、由部件显式读颜色位）
+- 部件 → 角色的绑定收敛在 [FlowtColors.kt](app/src/main/java/com/flowt/app/ui/theme/FlowtColors.kt) 的颜色位总表 —— 界面代码不直接引用色槽（少数 M3 组件以显式传参绑定，如两个导航栏）
 
 账单文件的导入 / 导出不在注册表里，但同样是"只动一层"的结构（格式层 `TableReader` / 字段层同义词表 / 来源模式 `ImportMode`）。改动或扩展这块之前先读 [docs/data-management.md](docs/data-management.md) —— 那里记了完整设计、扩展步骤，以及一批踩过的坑（比如判重与落库必须共用同一套映射口径）。
 
 ### 其他约定
 
 - [Transitions.kt](app/src/main/java/com/flowt/app/ui/Transitions.kt) 是全局动画规格的**唯一调节点**：主 tab 平移与二级页滑入滑出必须共用，否则快慢不一致肉眼可见
-- `expenseColor()`（[Color.kt](app/src/main/java/com/flowt/app/ui/theme/Color.kt)）是**不跟随主题**的语义色（支出永远暖红），刻意做成纯函数而非 `@Composable`，以便非 Composable 处调用
+- `expenseColor(dark)`（[Color.kt](app/src/main/java/com/flowt/app/ui/theme/Color.kt)）是「支出金额」角色（FREE，用户可覆盖）的**基底色**（默认暖红），纯函数刻意非 `@Composable`，以便非 Composable 处调用
 - 界面偏好存 DataStore（`PrefsRepository`）而**不存 Room**：加一个开关不该触发 schema 迁移
 - 主题在 Compose 树最顶层应用（`MainActivity` 里 `FlowtTheme` 包住 `FlowtApp`），改配色无需重启即可生效
 

@@ -25,14 +25,15 @@ import androidx.compose.ui.graphics.Color
 class PresetTheme(
     val id: String,
     val displayName: String,
-    val light: androidx.compose.material3.ColorScheme,
+    light: androidx.compose.material3.ColorScheme,
     dark: androidx.compose.material3.ColorScheme,
     val seedColor: Color,
 ) {
     /**
-     * 深色方案统一做大面积底色雾化 —— 与动态取色的深色处理（neutralizeLargeSurfaces）
-     * 是同一条规则、同一处实现，两条路径的观感永远一致。
+     * 浅色与深色都统一做方案化处理（容器雾化、容器层注入方案色相、深色页面底纯黑）
+     * —— 与动态取色是同一条规则、同一处实现，所有路径的观感永不走样。
      */
+    val light: androidx.compose.material3.ColorScheme = light.neutralizeLargeSurfaces(dark = false)
     val dark: androidx.compose.material3.ColorScheme = dark.neutralizeLargeSurfaces(dark = true)
     companion object {
 

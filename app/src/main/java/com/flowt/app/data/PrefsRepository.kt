@@ -82,9 +82,9 @@ data class AppPrefs(
      */
     val disabledMetrics: List<String> = LedgerMetric.defaultDisabledIds(),
     /** 当前选中的配色方案：内置方案 id（"violet"）或 "system_dynamic" 或 "saved:<名称>"。 */
-    val selectedThemeId: String = "violet",
+    val selectedThemeId: String = THEME_ID_SYSTEM_DYNAMIC,
     /** 明暗主题：跟随系统 / 强制浅色 / 强制深色。对「我的方案」（固定颜色）不生效。 */
-    val brightnessMode: BrightnessMode = BrightnessMode.LIGHT,
+    val brightnessMode: BrightnessMode = BrightnessMode.SYSTEM,
     /** 用户保存的方案。 */
     val savedThemes: List<SavedTheme> = emptyList(),
     /** 当前临时生效的角色覆盖（未保存的微调）。 */
@@ -211,6 +211,27 @@ class PrefsRepository(private val context: Context) {
         }
     }
 
+    /**
+     * 重命名一个保存的方案。新名字若与另一个已有方案相同，视为**覆盖**：
+     * 原同名方案被删除，名字转移给被改名的方案。
+     * 若被改名的方案正在使用，选中的方案 id 同步更名。
+     */
+    suspend fun renameSavedTheme(oldName: String, newName: String) {
+        context.dataStore.edit { prefs ->
+            val renamed = decodeSavedThemes(prefs[Keys.SAVED_THEMES]).mapNotNull { theme ->
+                when (theme.name) {
+                    oldName -> theme.copy(name = newName)
+                    newName -> null // 新名字与已有方案撞名 → 覆盖：原方案删除
+                    else -> theme
+                }
+            }
+            prefs[Keys.SAVED_THEMES] = encodeSavedThemes(renamed)
+            if (prefs[Keys.SELECTED_THEME] == "$SAVED_PREFIX$oldName") {
+                prefs[Keys.SELECTED_THEME] = "$SAVED_PREFIX$newName"
+            }
+        }
+    }
+
     /** 删除一个保存的方案。如果它正在使用，切回跟随系统取色，避免悬空。 */
     suspend fun deleteSavedTheme(name: String) {
         context.dataStore.edit { prefs ->
@@ -288,7 +309,7 @@ class PrefsRepository(private val context: Context) {
 
     /** 老版本只存了 themeId + brightnessMode，这里转成新的单值选择。 */
     private fun migrateLegacySelection(p: Preferences): String {
-        val legacyTheme = p[Keys.LEGACY_THEME_ID] ?: return "violet@light"
+        val legacyTheme = p[Keys.LEGACY_THEME_ID] ?: return THEME_ID_SYSTEM_DYNAMIC
         if (legacyTheme == THEME_ID_SYSTEM_DYNAMIC) return THEME_ID_SYSTEM_DYNAMIC
         val legacyDark = p[Keys.LEGACY_BRIGHTNESS] == BrightnessMode.DARK.name
         return "${legacyTheme}@${if (legacyDark) "dark" else "light"}"

@@ -17,28 +17,39 @@ import androidx.compose.ui.graphics.toArgb
 enum class RoleKind { BASE, ON, FREE }
 
 /**
- * 动态取色 / 预设深色方案共用的**大面积底色中性化**。
+ * 动态取色 / 预设方案共用的**大面与容器方案化**。
  *
- * Google 的动态方案与 Material 官方生成的深色容器都是 tone 30/90 的饱和色 ——
- * "面积最大的元素最艳"，与分层原则相反。这里从方案自身的强调色派生同色相雾色
- * 替换它们（记账页 + 流水条目的大面积底 → 雾深；指标卡 → 雾深彩），文字槽保留
- * 官方值：tone 10/90 的深浅落在雾色上对比反而更足。
+ * 两个职责：
+ * 1. 大面积底色中性化 —— 官方生成的容器都是 tone 30/90 的饱和色，"面积最大的
+ *    元素最艳"与分层原则相反；记账页 + 流水条目的大面积底 → 雾色，指标卡 → 雾彩；
+ * 2. **容器层注入方案色相** —— 卡片底与导航栏底按方案主色的色相生成带色调的值，
+ *    跨方案肉眼可辨（此前这两槽是无彩派生灰，六个方案看起来一样）。
+ *
+ * 文字槽保留官方值：tone 10/90 的深浅落在雾色上对比反而更足。
+ * 浅色与深色、预设与自动取色都走这一条路 —— 观感规则只有一份。
  */
 internal fun ColorScheme.neutralizeLargeSurfaces(
     dark: Boolean,
 ): ColorScheme {
     val pageMist = mistFrom(accent = primary, dark = dark)
     val cardMist = mistFrom(accent = tertiary, dark = dark, strong = true)
+    // 容器层注入方案色相，三层递进（页面底 → 导航栏底 → 卡片底，逐层加深加彩）：
+    // 卡片底比页面底深一档、导航栏底介于两者之间 —— 跨方案肉眼可辨
+    val cardTint = tintedContainer(primary, 0.10f, if (dark) 0.13f else 0.94f)
+    val navTint = tintedContainer(primary, if (dark) 0.18f else 0.20f, if (dark) 0.25f else 0.90f)
+    val navSurface = tintedContainer(primary, 0.08f, if (dark) 0.10f else 0.955f)
     // 深色模式的页面底统一为纯黑（#000000）：OLED 友好，卡片/弹层靠明度差浮起。
     // 页面底覆盖三个主 tab **和各二级页**的背景 —— 二级页直接叠在主界面的
     // Scaffold 上，透出的就是同一个 surface 槽。只动页面级三槽 —— 卡片
-    // （surfaceContainerLow）、对话框（surfaceContainerHigh）、菜单与导航栏
-    // （surfaceContainer）各归各的槽，不随页面底变化。
+    // （surfaceContainerLow）、对话框（surfaceContainerHigh）各归各的槽，不随页面底变化。
     return if (dark) {
         copy(
             primaryContainer = pageMist,
             surfaceContainerHighest = pageMist,
             tertiaryContainer = cardMist,
+            surfaceContainerLow = cardTint,
+            surfaceContainer = navSurface,
+            secondaryContainer = navTint,
             surface = Color(0xFF000000),
             background = Color(0xFF000000),
             surfaceDim = Color(0xFF000000),
@@ -48,9 +59,16 @@ internal fun ColorScheme.neutralizeLargeSurfaces(
             primaryContainer = pageMist,
             surfaceContainerHighest = pageMist,
             tertiaryContainer = cardMist,
+            surfaceContainerLow = cardTint,
+            surfaceContainer = navSurface,
+            secondaryContainer = navTint,
         )
     }
 }
+
+/** 提取 [accent] 的色相，按指定的饱和度/明度生成带方案色调的容器色。 */
+private fun tintedContainer(accent: Color, saturation: Float, value: Float): Color =
+    hsvToColor(rgbToHsv(accent).first, saturation, value)
 
 /**
  * 可自定义的颜色角色注册表。

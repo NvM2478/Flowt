@@ -1,9 +1,11 @@
 package com.flowt.app.ui.settings
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -51,7 +52,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.flowt.app.data.BrightnessMode
@@ -105,6 +108,7 @@ fun AppearanceSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     var pendingBrightness by remember { mutableStateOf<BrightnessMode?>(null) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<SavedTheme?>(null) }
+    var renameTarget by remember { mutableStateOf<SavedTheme?>(null) }
     var pairConflict by remember { mutableStateOf<PairConflict?>(null) }
 
     val hasUnsaved = prefs.roleOverrides.isNotEmpty()
@@ -212,7 +216,7 @@ fun AppearanceSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    // 「保存为新方案」常驻顶栏：有未保存的修改才可点，否则置灰
+                    // 「保存到我的方案」常驻顶栏：有未保存的修改才可点，否则置灰
                     TextButton(
                         onClick = { showSaveDialog = true },
                         enabled = hasUnsaved,
@@ -356,15 +360,10 @@ fun AppearanceSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                                             "${com.flowt.app.data.PrefsRepository.SAVED_PREFIX}${saved.name}"
                                         )
                                     },
-                                    trailing = {
-                                        IconButton(onClick = { deleteTarget = saved }) {
-                                            Icon(
-                                                Icons.Filled.Delete,
-                                                contentDescription = "删除方案",
-                                                tint = subtleTextColor(),
-                                            )
-                                        }
-                                    },
+                                    menuItems = listOf(
+                                        SchemeMenuItem("重命名") { renameTarget = saved },
+                                        SchemeMenuItem("删除", isDanger = true) { deleteTarget = saved },
+                                    ),
                                 )
                             }
                         }
@@ -451,6 +450,9 @@ fun AppearanceSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
 
     if (showSaveDialog) {
         SaveThemeDialog(
+            title = "保存为新方案",
+            initialName = uniqueSaveName(prefs.savedThemes.map { it.name }.toSet()),
+            existingNames = prefs.savedThemes.map { it.name }.toSet(),
             onDismiss = { showSaveDialog = false },
             onConfirm = { name ->
                 scope.launch {
@@ -518,6 +520,20 @@ fun AppearanceSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
         )
     }
 
+    // 长按方案 → 重命名：复用命名对话框，重名集合排除自身（自己的名字不算冲突）
+    renameTarget?.let { target ->
+        SaveThemeDialog(
+            title = "重命名「${target.name}」",
+            initialName = target.name,
+            existingNames = prefs.savedThemes.map { it.name }.toSet() - target.name,
+            onDismiss = { renameTarget = null },
+            onConfirm = { newName ->
+                scope.launch { vm.prefsRepo.renameSavedTheme(target.name, newName.trim()) }
+                renameTarget = null
+            },
+        )
+    }
+
     editingRole?.let { role ->
         RoleColorPickerSheet(
             role = role,
@@ -530,19 +546,45 @@ fun AppearanceSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     }
 }
 
-/** 一行方案：色块预览 + 名称 + 选中标记（可选尾部操作）。 */
+/** 长按气泡菜单的菜单项（仅当方案行声明了 menuItems 时长按可用）。 */
+private data class SchemeMenuItem(
+    val label: String,
+    val isDanger: Boolean = false,
+    val onClick: () -> Unit,
+)
+
+/** 一行方案：色块预览 + 名称 + 选中标记（可选尾部操作与长按气泡菜单）。 */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SchemeRow(
     name: String,
     previewColors: List<Color>,
     selected: Boolean,
     onClick: () -> Unit,
+    /** 非空时该行长按弹出气泡菜单（锚定在本行），单击行为不变。 */
+    menuItems: List<SchemeMenuItem>? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .then(
+                if (menuItems != null) {
+                    Modifier.combinedClickable(
+                        onClick = onClick,
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            menuOpen = true
+                        },
+                        // 触觉由上面手动统一触发，禁用系统默认触觉避免长按连震两次
+                        hapticFeedbackEnabled = false,
+                    )
+                } else {
+                    Modifier.clickable(onClick = onClick)
+                },
+            )
             .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -563,6 +605,30 @@ private fun SchemeRow(
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
         )
+        if (menuItems != null) {
+            Box {
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    menuItems.forEach { item ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = item.label,
+                                    color = if (item.isDanger) {
+                                        FlowtColors.current.dangerAccent
+                                    } else {
+                                        Color.Unspecified
+                                    },
+                                )
+                            },
+                            onClick = {
+                                menuOpen = false
+                                item.onClick()
+                            },
+                        )
+                    }
+                }
+            }
+        }
         trailing?.invoke()
         RadioButton(selected = selected, onClick = onClick)
     }
@@ -640,15 +706,36 @@ private fun SectionLabel(text: String) {
     )
 }
 
+/** 返回 base 在 existing 中未占用的名字：已被占用则追加 " (N)" 尾标，取最小可用序号。 */
+/** 返回保存方案的默认名（「我的配色」）在 [existing] 中未占用的形式：被占用则追加 " (N)" 尾标，取最小可用序号。 */
+private fun uniqueSaveName(existing: Set<String>): String {
+    val base = "我的配色"
+    if (base !in existing) return base
+    var n = 1
+    while ("$base ($n)" in existing) n++
+    return "$base ($n)"
+}
+
+/**
+ * 方案命名对话框：保存与重命名共用。
+ * [initialName] 为打开时的初始值；[existingNames] 是重名判断集合（调用方排除自身）。
+ * 重名时输入框进入危险色并提示 —— 覆盖语义，保存/重命名按钮保持可点。
+ */
 @Composable
 private fun SaveThemeDialog(
+    title: String,
+    initialName: String,
+    existingNames: Set<String>,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    var name by remember { mutableStateOf("我的配色") }
+    var name by remember(initialName, existingNames) { mutableStateOf(initialName) }
+    val trimmed = name.trim()
+    // 用户手动改成已有方案名 → 危险色提示，确认按钮保持可点（覆盖语义，由提示说明后果）
+    val isDuplicate = trimmed in existingNames
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("保存为新方案") },
+        title = { Text(title) },
         text = {
             Column {
                 OutlinedTextField(
@@ -656,20 +743,23 @@ private fun SaveThemeDialog(
                     onValueChange = { name = it },
                     label = { Text("方案名称") },
                     singleLine = true,
+                    isError = isDuplicate,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "会保存当前的全部颜色值，之后可在「我的方案」里选用或删除。同名会覆盖。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = subtleTextColor(),
-                )
+                if (isDuplicate) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "已有同名方案，保存将会覆盖",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FlowtColors.current.dangerAccent,
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim()) },
-                enabled = name.isNotBlank(),
+                onClick = { onConfirm(trimmed) },
+                enabled = trimmed.isNotBlank(),
             ) { Text("保存") }
         },
         dismissButton = {
@@ -679,7 +769,7 @@ private fun SaveThemeDialog(
 }
 
 /**
- * 方案行预览色的**代表角色顺序表** —— 自动 / 内置 / 自定义三类方案共用。
+ * 方案行预览色的**代表角色顺序表** —— 自动 / 内置 / 自定义三类方案共用，浅色深色一致。
  * 想调整方案行展示哪几个角色、按什么顺序展示，只改这一张表。
  */
 private val previewRoles = listOf(
@@ -697,4 +787,4 @@ private fun previewColorsOf(scheme: androidx.compose.material3.ColorScheme): Lis
 
 /** 保存方案的预览色：优先用方案自己存的角色值，缺失（旧数据）回退当前生效色。 */
 private fun previewOfSaved(saved: SavedTheme, colors: FlowtColors): List<Color> =
-    previewRoles.map { role -> saved.overrides[role.name]?.let { Color(it) } ?: colors.role(role) }
+    previewRoles.map { role -> saved.overrides[role.name]?.let { Color(it) } ?: colors.defaultRole(role) }

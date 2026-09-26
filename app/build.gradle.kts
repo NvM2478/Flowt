@@ -7,7 +7,7 @@ val keystoreProperties = Properties().apply {
 }
 
 // 发版时改这里，versionName 与 APK 文件名会一起更新
-val appVersionName = "0.1.0"
+val appVersionName = "0.1.1"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -31,7 +31,7 @@ android {
         minSdk = 26
         // 与真机 HyperOS 3 (Android 16 / API 36) 对齐，缩小行为变更触发面
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

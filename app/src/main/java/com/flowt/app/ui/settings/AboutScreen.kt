@@ -67,6 +67,18 @@ private data class ChangelogEntry(
  */
 private val changelog = listOf(
     ChangelogEntry(
+        version = "0.1.1",
+        date = "2026-09-27",
+        items = listOf(
+            "新增「关于 Flowt」页：版本信息、隐私说明、反馈渠道",
+            "默认配色方案改为「自动」（跟随系统取色与明暗）",
+            "深色模式页面底统一为纯黑；卡片底与导航栏底注入方案色相",
+            "取色弹窗重做：全高布局、色板按角色生成、HSV 取色盘、重置实时置灰",
+            "低对比颜色应用后浮出待决胶囊，可跨页面浏览后保留或撤销",
+            "保存方案支持重命名（长按方案行）",
+        ),
+    ),
+    ChangelogEntry(
         version = "0.1.0",
         date = "2026-09-26",
         items = listOf("首个发布版本"),
