@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.flowt.app.data.db.Category
 import com.flowt.app.data.db.TransactionEntity
 import com.flowt.app.metrics.formatAmount
+import com.flowt.app.ui.theme.FlowtColors
 import com.flowt.app.ui.theme.subtleTextColor
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -78,27 +79,27 @@ fun ReportScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = FlowtColors.current.metricCardBackground,
                 ),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "$monthLabel 支出",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = FlowtColors.current.metricCardText,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = formatAmount(total.takeIf { monthTransactions.isNotEmpty() }),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = FlowtColors.current.metricCardText,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "${monthTransactions.size} 笔",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = FlowtColors.current.metricCardText,
                     )
                 }
             }

@@ -42,6 +42,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,6 +74,7 @@ import com.flowt.app.metrics.formatAmount
 import com.flowt.app.ui.AppViewModel
 import com.flowt.app.ui.components.CategoryPickerSheet
 import com.flowt.app.ui.components.childrenByParentOf
+import com.flowt.app.ui.theme.FlowtColors
 import com.flowt.app.ui.theme.subtleTextColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -200,6 +202,11 @@ fun ImportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = FlowtColors.current.navigationBarBackground,
+                    titleContentColor = FlowtColors.current.navigationBarText,
+                    navigationIconContentColor = FlowtColors.current.navigationBarText,
+                ),
                 title = { Text(screenTitle(mode)) },
                 navigationIcon = {
                     IconButton(
@@ -302,7 +309,7 @@ fun ImportScreen(
                         dropConfirm = false
                         onClose()
                     },
-                ) { Text("放弃", color = MaterialTheme.colorScheme.error) }
+                ) { Text("放弃", color = FlowtColors.current.dangerAccent) }
             },
             dismissButton = {
                 TextButton(onClick = { dropConfirm = false }) { Text("继续导入") }
@@ -436,7 +443,7 @@ private fun FailedContent(message: String, onRetry: () -> Unit, onClose: () -> U
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.error,
+            color = FlowtColors.current.dangerAccent,
         )
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -479,7 +486,7 @@ private fun PreviewContent(
                             text = "这个文件导入过",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.error,
+                            color = FlowtColors.current.dangerAccent,
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
@@ -553,7 +560,7 @@ private fun SummaryCard(plan: ImportPlan, onShowInvalid: () -> Unit) {
                     Text(
                         text = "${parsed.invalidRows.size} 行无法解析",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = FlowtColors.current.dangerAccent,
                         modifier = Modifier.weight(1f),
                     )
                     Text("查看", style = MaterialTheme.typography.bodySmall, color = subtleTextColor())
@@ -691,7 +698,7 @@ private fun BindingStatusBadge(status: BindingStatus) {
     val (text, color) = when (status) {
         BindingStatus.Ok -> "✓" to Color(0xFF2E7D32)
         is BindingStatus.Partial -> "${status.failures}/${status.sampled} 行认不出" to Color(0xFFE65100)
-        BindingStatus.AllFailed -> "认不出来" to MaterialTheme.colorScheme.error
+        BindingStatus.AllFailed -> "认不出来" to FlowtColors.current.dangerAccent
     }
     Text(
         text = text,
@@ -745,7 +752,7 @@ private fun MappingSection(
                                 color = if (mapping.target is MappingTarget.Skip) {
                                     subtleTextColor()
                                 } else {
-                                    MaterialTheme.colorScheme.primary
+                                    FlowtColors.current.accentInlineText
                                 },
                             )
                             Text(
@@ -836,7 +843,7 @@ private fun ConfirmBar(
                     else -> "没有可导入的流水"
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+                color = FlowtColors.current.dangerAccent,
             )
             Spacer(Modifier.height(8.dp))
         }
@@ -953,7 +960,7 @@ private fun MappingEditorDialog(
                 ) {
                     Text(
                         text = "跳过（这些流水不导入）",
-                        color = MaterialTheme.colorScheme.error,
+                        color = FlowtColors.current.dangerAccent,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -992,7 +999,7 @@ private fun SectionHeader(
             Text(
                 text = summary,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (hasProblem) MaterialTheme.colorScheme.error else subtleTextColor(),
+                color = if (hasProblem) FlowtColors.current.dangerAccent else subtleTextColor(),
             )
         }
         Icon(

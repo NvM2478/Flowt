@@ -9,20 +9,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.flowt.app.ui.AppViewModel
-import com.flowt.app.ui.theme.THEME_ID_SYSTEM_DYNAMIC
 import com.flowt.app.ui.theme.subtleTextColor
 import kotlinx.coroutines.launch
 
@@ -43,7 +38,6 @@ fun SettingsScreen(
     onOpenAppearance: () -> Unit,
     onOpenData: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -68,23 +62,6 @@ fun SettingsScreen(
                     title = "数据管理",
                     onClick = onOpenData,
                 )
-            }
-        }
-
-        // 逃生通道放在一级页面：配色被改花之后，用户不必先找到「外观」再找到按钮。
-        // 用固定配色（深底白字）而不是主题色 —— 它必须在配色被改坏之后依然可见。
-        item(key = "reset_colors") {
-            Button(
-                onClick = {
-                    scope.launch { vm.prefsRepo.setSelectedTheme(THEME_ID_SYSTEM_DYNAMIC) }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xE61C1B1F),
-                    contentColor = Color.White,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("恢复默认颜色")
             }
         }
 

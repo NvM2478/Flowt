@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,6 +51,7 @@ import androidx.compose.ui.zIndex
 import com.flowt.app.metrics.LedgerMetric
 import com.flowt.app.ui.AppViewModel
 import com.flowt.app.ui.components.MetricCard
+import com.flowt.app.ui.theme.FlowtColors
 import com.flowt.app.ui.theme.subtleTextColor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -201,6 +203,11 @@ fun MetricsSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = FlowtColors.current.navigationBarBackground,
+                    titleContentColor = FlowtColors.current.navigationBarText,
+                    navigationIconContentColor = FlowtColors.current.navigationBarText,
+                ),
                 title = { Text("首页指标") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -410,16 +417,16 @@ private fun MetricGridCell(
         // 徽标：背景色与符号颜色都做补间，符号本身见下面的交叉淡化
         val badgeColor by animateColorAsState(
             targetValue = when (shownBadge) {
-                BadgeKind.Remove -> MaterialTheme.colorScheme.error
-                BadgeKind.Add -> MaterialTheme.colorScheme.primary
+                BadgeKind.Remove -> FlowtColors.current.dangerBackground
+                BadgeKind.Add -> FlowtColors.current.accentBackground
             },
             animationSpec = tween(durationMillis = 400),
             label = "badge_color",
         )
         val badgeContentColor by animateColorAsState(
             targetValue = when (shownBadge) {
-                BadgeKind.Remove -> MaterialTheme.colorScheme.onError
-                BadgeKind.Add -> MaterialTheme.colorScheme.onPrimary
+                BadgeKind.Remove -> FlowtColors.current.dangerOnText
+                BadgeKind.Add -> FlowtColors.current.accentButtonText
             },
             animationSpec = tween(durationMillis = 400),
             label = "badge_content_color",

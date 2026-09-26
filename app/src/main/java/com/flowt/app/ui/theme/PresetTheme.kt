@@ -2,8 +2,7 @@ package com.flowt.app.ui.theme
 
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
+
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -16,6 +15,10 @@ import androidx.compose.ui.graphics.Color
  * 不是"部件制"。所以配色方案只定义角色色，具体某个部件用什么颜色由组件自己决定 ——
  * 这样每套配色都能自动适配浅色/深色、以及所有组件的状态色。
  *
+ * 浅色模式的分层遵循"面积与饱和度成反比"：primaryContainer（记账页 + 流水条目的
+ * 大面积底）用低饱和雾色；tertiaryContainer（指标卡）保留彩感但收敛；真正的强调
+ * 交给 primary（FAB、主按钮）—— 大量重复出现的元素永远不该是屏幕上最艳的。
+ *
  * [seedColor] 是为"用户自选主色"预留的扩展点：将来做一个取色器，
  * 用种子色推导出整套 ColorScheme 即可，架构不用动。V1 不开放。
  */
@@ -23,9 +26,14 @@ class PresetTheme(
     val id: String,
     val displayName: String,
     val light: androidx.compose.material3.ColorScheme,
-    val dark: androidx.compose.material3.ColorScheme,
+    dark: androidx.compose.material3.ColorScheme,
     val seedColor: Color,
 ) {
+    /**
+     * 深色方案统一做大面积底色雾化 —— 与动态取色的深色处理（neutralizeLargeSurfaces）
+     * 是同一条规则、同一处实现，两条路径的观感永远一致。
+     */
+    val dark: androidx.compose.material3.ColorScheme = dark.neutralizeLargeSurfaces(dark = true)
     companion object {
 
         val all: List<PresetTheme> = listOf(
@@ -36,7 +44,7 @@ class PresetTheme(
                 light = lightColorScheme(
                     primary = Color(0xFF6750A4),
                     onPrimary = Color(0xFFFFFFFF),
-                    primaryContainer = Color(0xFFEADDFF),
+                    primaryContainer = Color(0xFFF3F0F9),
                     onPrimaryContainer = Color(0xFF21005D),
                     secondary = Color(0xFF625B71),
                     onSecondary = Color(0xFFFFFFFF),
@@ -44,7 +52,7 @@ class PresetTheme(
                     onSecondaryContainer = Color(0xFF1D192B),
                     tertiary = Color(0xFF7D5260),
                     onTertiary = Color(0xFFFFFFFF),
-                    tertiaryContainer = Color(0xFFFFD8E4),
+                    tertiaryContainer = Color(0xFFF0DDE7),
                     onTertiaryContainer = Color(0xFF31111D),
                     error = Color(0xFFB3261E),
                     onError = Color(0xFFFFFFFF),
@@ -93,7 +101,7 @@ class PresetTheme(
                 light = lightColorScheme(
                     primary = Color(0xFF00696E),
                     onPrimary = Color(0xFFFFFFFF),
-                    primaryContainer = Color(0xFF9DF0F6),
+                    primaryContainer = Color(0xFFE9F4F5),
                     onPrimaryContainer = Color(0xFF002022),
                     secondary = Color(0xFF4A6365),
                     onSecondary = Color(0xFFFFFFFF),
@@ -101,7 +109,7 @@ class PresetTheme(
                     onSecondaryContainer = Color(0xFF051F21),
                     tertiary = Color(0xFF4B607C),
                     onTertiary = Color(0xFFFFFFFF),
-                    tertiaryContainer = Color(0xFFD3E4FF),
+                    tertiaryContainer = Color(0xFFDEE4F0),
                     onTertiaryContainer = Color(0xFF041C35),
                     error = Color(0xFFBA1A1A),
                     onError = Color(0xFFFFFFFF),
@@ -150,7 +158,7 @@ class PresetTheme(
                 light = lightColorScheme(
                     primary = Color(0xFF9A4520),
                     onPrimary = Color(0xFFFFFFFF),
-                    primaryContainer = Color(0xFFFFDBCD),
+                    primaryContainer = Color(0xFFF8F3F0),
                     onPrimaryContainer = Color(0xFF370E00),
                     secondary = Color(0xFF77574B),
                     onSecondary = Color(0xFFFFFFFF),
@@ -158,7 +166,7 @@ class PresetTheme(
                     onSecondaryContainer = Color(0xFF2C150C),
                     tertiary = Color(0xFF6B5D2F),
                     onTertiary = Color(0xFFFFFFFF),
-                    tertiaryContainer = Color(0xFFF4E1A7),
+                    tertiaryContainer = Color(0xFFEAE2C9),
                     onTertiaryContainer = Color(0xFF221B00),
                     error = Color(0xFFBA1A1A),
                     onError = Color(0xFFFFFFFF),
@@ -207,7 +215,7 @@ class PresetTheme(
                 light = lightColorScheme(
                     primary = Color(0xFF4355B9),
                     onPrimary = Color(0xFFFFFFFF),
-                    primaryContainer = Color(0xFFDEE0FF),
+                    primaryContainer = Color(0xFFEDF0F8),
                     onPrimaryContainer = Color(0xFF00105C),
                     secondary = Color(0xFF5B5D72),
                     onSecondary = Color(0xFFFFFFFF),
@@ -215,7 +223,7 @@ class PresetTheme(
                     onSecondaryContainer = Color(0xFF181A2C),
                     tertiary = Color(0xFF77536D),
                     onTertiary = Color(0xFFFFFFFF),
-                    tertiaryContainer = Color(0xFFFFD7F1),
+                    tertiaryContainer = Color(0xFFEFDFE9),
                     onTertiaryContainer = Color(0xFF2D1228),
                     error = Color(0xFFBA1A1A),
                     onError = Color(0xFFFFFFFF),
@@ -264,7 +272,7 @@ class PresetTheme(
                 light = lightColorScheme(
                     primary = Color(0xFF3F6837),
                     onPrimary = Color(0xFFFFFFFF),
-                    primaryContainer = Color(0xFFC0EFB0),
+                    primaryContainer = Color(0xFFEAF2E6),
                     onPrimaryContainer = Color(0xFF002201),
                     secondary = Color(0xFF55624F),
                     onSecondary = Color(0xFFFFFFFF),
@@ -272,7 +280,7 @@ class PresetTheme(
                     onSecondaryContainer = Color(0xFF131F10),
                     tertiary = Color(0xFF38656A),
                     onTertiary = Color(0xFFFFFFFF),
-                    tertiaryContainer = Color(0xFFBCEBF0),
+                    tertiaryContainer = Color(0xFFD8E6E8),
                     onTertiaryContainer = Color(0xFF002022),
                     error = Color(0xFFBA1A1A),
                     onError = Color(0xFFFFFFFF),
@@ -321,7 +329,7 @@ class PresetTheme(
                 light = lightColorScheme(
                     primary = Color(0xFF984061),
                     onPrimary = Color(0xFFFFFFFF),
-                    primaryContainer = Color(0xFFFFD9E2),
+                    primaryContainer = Color(0xFFF8EFF1),
                     onPrimaryContainer = Color(0xFF3E001D),
                     secondary = Color(0xFF74565F),
                     onSecondary = Color(0xFFFFFFFF),
@@ -329,7 +337,7 @@ class PresetTheme(
                     onSecondaryContainer = Color(0xFF2B151C),
                     tertiary = Color(0xFF7C5635),
                     onTertiary = Color(0xFFFFFFFF),
-                    tertiaryContainer = Color(0xFFFFDCC1),
+                    tertiaryContainer = Color(0xFFF0E3D5),
                     onTertiaryContainer = Color(0xFF2E1500),
                     error = Color(0xFFBA1A1A),
                     onError = Color(0xFFFFFFFF),
@@ -371,66 +379,6 @@ class PresetTheme(
                     outlineVariant = Color(0xFF514347),
                 ),
             ),
-            // 刻意做成"极端方案"：深色底 + 高饱和强调色。
-            // 它的作用不只是好看 —— 切到这套配色能立刻看出每个部件实际用的是哪个角色：
-            // 该亮的地方没亮、该是文字色的地方变成了容器色，一眼就能发现角色指派错了。
-            PresetTheme(
-                id = "neon",
-                displayName = "霓虹",
-                seedColor = Color(0xFF00E5FF),
-                light = lightColorScheme(
-                    primary = Color(0xFF00838F),
-                    onPrimary = Color(0xFFFFFFFF),
-                    primaryContainer = Color(0xFFB2EBF2),
-                    onPrimaryContainer = Color(0xFF00201F),
-                    secondary = Color(0xFF6A1B9A),
-                    onSecondary = Color(0xFFFFFFFF),
-                    secondaryContainer = Color(0xFFE1BEE7),
-                    onSecondaryContainer = Color(0xFF2A0033),
-                    tertiary = Color(0xFF00897B),
-                    onTertiary = Color(0xFFFFFFFF),
-                    tertiaryContainer = Color(0xFFA7FFEB),
-                    onTertiaryContainer = Color(0xFF00201A),
-                    error = Color(0xFFD50000),
-                    onError = Color(0xFFFFFFFF),
-                    errorContainer = Color(0xFFFFCDD2),
-                    onErrorContainer = Color(0xFF3E0000),
-                    background = Color(0xFF0A0E27),
-                    onBackground = Color(0xFFE0F7FA),
-                    surface = Color(0xFF131A3A),
-                    onSurface = Color(0xFFE0F7FA),
-                    surfaceVariant = Color(0xFF2A3352),
-                    onSurfaceVariant = Color(0xFFB0BEC5),
-                    outline = Color(0xFF00E5FF),
-                    outlineVariant = Color(0xFF3A4A6B),
-                ),
-                dark = darkColorScheme(
-                    primary = Color(0xFF00E5FF),
-                    onPrimary = Color(0xFF00363D),
-                    primaryContainer = Color(0xFF005662),
-                    onPrimaryContainer = Color(0xFFB2EBF2),
-                    secondary = Color(0xFFE040FB),
-                    onSecondary = Color(0xFF3A0050),
-                    secondaryContainer = Color(0xFF6A1B9A),
-                    onSecondaryContainer = Color(0xFFF3E5F5),
-                    tertiary = Color(0xFF1DE9B6),
-                    onTertiary = Color(0xFF00382E),
-                    tertiaryContainer = Color(0xFF00695C),
-                    onTertiaryContainer = Color(0xFFA7FFEB),
-                    error = Color(0xFFFF5252),
-                    onError = Color(0xFF3E0000),
-                    errorContainer = Color(0xFF8E0000),
-                    onErrorContainer = Color(0xFFFFCDD2),
-                    background = Color(0xFF05070F),
-                    onBackground = Color(0xFFE0F7FA),
-                    surface = Color(0xFF0D1226),
-                    onSurface = Color(0xFFE0F7FA),
-                    surfaceVariant = Color(0xFF1E2740),
-                    onSurfaceVariant = Color(0xFF90A4AE),
-                    outline = Color(0xFF00E5FF),
-                    outlineVariant = Color(0xFF2A3352),
-                ),
-            ),
         )
 
         fun byId(id: String): PresetTheme = all.firstOrNull { it.id == id } ?: all.first()
@@ -448,65 +396,3 @@ class PresetTheme(
     }
 }
 
-/** 供设置页预览用：某套主题的浅色代表色（深色主色 → 浅色容器色）。 */
-@Composable
-fun PresetTheme.swatches(): List<Color> = listOf(
-    light.primary,
-    light.secondary,
-    light.tertiary,
-    light.primaryContainer,
-    light.surfaceVariant,
-)
-
-/**
- * 一个可选的配色方案变体 = 某一套配色 × 浅色或深色。
- *
- * 为什么要把浅暗拆成独立选项，而不是"选方案 + 选明暗模式"两个设置：
- * - 少一个维度、少一个设置项；
- * - 用户能**直接看到"暗色版长什么样"再选**，不用先选方案再切深色去猜效果；
- * - 两套变体在列表里并列，对比起来一目了然。
- */
-data class ThemeVariant(
-    val id: String,
-    val displayName: String,
-    val isDark: Boolean,
-    private val schemeProvider: () -> androidx.compose.material3.ColorScheme,
-) {
-    /** 懒解析：列表里十几个变体，没必要在构建列表时就把所有 ColorScheme 都造出来。 */
-    fun scheme(): androidx.compose.material3.ColorScheme = schemeProvider()
-
-    /** 列表用的代表色（取该变体自身的主色系）。 */
-    fun previewColors(): List<Color> {
-        val s = scheme()
-        return listOf(s.primary, s.secondary, s.tertiary, s.primaryContainer, s.surfaceVariant)
-    }
-
-    companion object {
-        /** 变体 id 编码："violet@light" / "violet@dark"。 */
-        fun variantId(themeId: String, dark: Boolean) = "$themeId@${if (dark) "dark" else "light"}"
-
-        fun themeIdOf(variantId: String): String = variantId.substringBefore('@')
-
-        fun isDark(variantId: String): Boolean = variantId.substringAfter('@', "light") == "dark"
-
-        /** 全部内置变体：每套配色一个浅色版、一个深色版。 */
-        val builtIn: List<ThemeVariant> = PresetTheme.all.flatMap { preset ->
-            listOf(
-                ThemeVariant(
-                    id = variantId(preset.id, dark = false),
-                    displayName = "${preset.displayName} · 浅色",
-                    isDark = false,
-                    schemeProvider = { preset.light },
-                ),
-                ThemeVariant(
-                    id = variantId(preset.id, dark = true),
-                    displayName = "${preset.displayName} · 深色",
-                    isDark = true,
-                    schemeProvider = { preset.dark },
-                ),
-            )
-        }
-
-        fun byId(variantId: String): ThemeVariant? = builtIn.firstOrNull { it.id == variantId }
-    }
-}

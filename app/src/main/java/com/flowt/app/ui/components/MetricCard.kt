@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.flowt.app.metrics.formatAmount
+import com.flowt.app.ui.theme.FlowtColors
 
 /**
  * 指标卡。
@@ -36,7 +37,7 @@ fun MetricCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     val colors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        containerColor = FlowtColors.current.metricCardBackground,
     )
 
     // fillMaxWidth 必须有：卡片要被"外部约束"撑满，而不是按内容自适应。
@@ -105,7 +106,7 @@ private fun MetricCardContent(title: String, amountText: String) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            color = FlowtColors.current.metricCardText,
             maxLines = 1,
         )
         Spacer(Modifier.height(6.dp))
@@ -113,7 +114,7 @@ private fun MetricCardContent(title: String, amountText: String) {
             text = amountText,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            color = FlowtColors.current.metricCardText,
             maxLines = 1,
         )
     }

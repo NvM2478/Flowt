@@ -58,6 +58,7 @@ import com.flowt.app.data.db.Category
 import com.flowt.app.data.db.TransactionEntity
 import com.flowt.app.ui.AppViewModel
 import com.flowt.app.ui.components.CategoryPickerSheet
+import com.flowt.app.ui.theme.FlowtColors
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -135,10 +136,9 @@ fun EntryScreen(
 
     val sheetState = rememberModalBottomSheetState()
 
-    // 记账页底色 = FAB 的容器色（primaryContainer）。
-    // 注意别用 primary：那是"主色"，比 FAB 的容器色深一大截，两者看起来不是同一个东西。
-    val pageBackground = MaterialTheme.colorScheme.primaryContainer
-    val onPageColor = MaterialTheme.colorScheme.onPrimaryContainer
+    // 记账页底色与文字是一对配对位（记账页底色 / 记账页文字），用户改底色时文字自动匹配深浅
+    val pageBackground = FlowtColors.current.entryPageBackground
+    val onPageColor = FlowtColors.current.entryPageText
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = onPageColor,
         unfocusedTextColor = onPageColor,
@@ -254,7 +254,7 @@ fun EntryScreen(
                         OutlinedButton(
                             onClick = onDeleteRequest,
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error,
+                                contentColor = FlowtColors.current.dangerAccent,
                             ),
                             modifier = Modifier.weight(1f),
                         ) {
@@ -293,9 +293,9 @@ fun EntryScreen(
                         },
                         enabled = canSave,
                         colors = ButtonDefaults.buttonColors(
-                            // 深色 primary 按钮压在浅色 primaryContainer 底上：对比最强，最像"主要动作"
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            // 深色主按钮压在浅色记账页底上：对比最强，最像"主要动作"
+                            containerColor = FlowtColors.current.accentBackground,
+                            contentColor = FlowtColors.current.accentButtonText,
                         ),
                         modifier = Modifier.weight(if (isEditing) 1.4f else 1f),
                     ) {
@@ -357,7 +357,7 @@ private fun CategorySelector(
     onMore: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        val onPageColor = MaterialTheme.colorScheme.onPrimaryContainer
+        val onPageColor = FlowtColors.current.entryPageText
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -378,8 +378,8 @@ private fun CategorySelector(
                     FilledTonalButton(
                         onClick = { onPick(id) },
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = FlowtColors.current.accentBackground,
+                            contentColor = FlowtColors.current.accentButtonText,
                         ),
                     ) {
                         Text(path, style = MaterialTheme.typography.labelLarge)

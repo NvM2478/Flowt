@@ -29,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.flowt.app.data.db.Category
 import com.flowt.app.ui.AppViewModel
+import com.flowt.app.ui.theme.FlowtColors
 import com.flowt.app.ui.theme.subtleTextColor
 import kotlinx.coroutines.launch
 
@@ -87,6 +89,11 @@ fun CategoryManageScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = FlowtColors.current.navigationBarBackground,
+                    titleContentColor = FlowtColors.current.navigationBarText,
+                    navigationIconContentColor = FlowtColors.current.navigationBarText,
+                ),
                 title = { Text("分类管理") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -300,7 +307,7 @@ private fun CategoryNameDialog(
                     Text(
                         text = errorMessage,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = FlowtColors.current.dangerAccent,
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -400,7 +407,7 @@ private fun DeleteConfirmDialog(
         dismissButton = {
             Column {
                 TextButton(onClick = onDeleteTransactions) {
-                    Text("连同流水一起删除", color = MaterialTheme.colorScheme.error)
+                    Text("连同流水一起删除", color = FlowtColors.current.dangerAccent)
                 }
                 TextButton(onClick = onDismiss) { Text("取消") }
             }

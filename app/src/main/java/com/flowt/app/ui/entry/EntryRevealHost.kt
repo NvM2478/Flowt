@@ -5,7 +5,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +24,7 @@ import androidx.compose.ui.unit.IntSize
 import com.flowt.app.data.db.Category
 import com.flowt.app.data.db.TransactionEntity
 import com.flowt.app.ui.AppViewModel
+import com.flowt.app.ui.theme.FlowtColors
 import kotlin.math.hypot
 
 /**
@@ -131,7 +131,9 @@ fun EntryRevealHost(
     }
     val radius = maxRadius * progress.value
 
-    val revealColor = MaterialTheme.colorScheme.primaryContainer
+    // 揭场圆与记账页底色同源；FAB 的加号也是同一个颜色位 ——
+    // 圆从 FAB 中心长出来时加号无缝溶进圆里，起跳零跳变
+    val revealColor = FlowtColors.current.entryPageBackground
 
     Box(
         modifier = Modifier

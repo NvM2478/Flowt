@@ -15,11 +15,16 @@ import com.flowt.app.data.db.FlowtDatabase
 import com.flowt.app.data.db.TransactionEntity
 import com.flowt.app.metrics.MetricValue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+/** 低对比度颜色的待决提醒（全局悬浮胶囊的状态）。 */
+data class LowContrastNotice(val roleName: String)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -36,6 +41,41 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val prefs: StateFlow<AppPrefs> = prefsRepo.prefs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppPrefs())
+
+    /**
+     * 低对比度配对色的待决提醒：应用了低对比颜色后出现，全局悬浮、永不自动消失，
+     * 直到用户「保留」「撤销」，或该角色的覆盖被清空（切换方案/恢复默认）。
+     * 新提醒直接替换旧提醒 —— 继续调色意味着旧的已经看过，隐含保留。
+     */
+    val lowContrastNotice = MutableStateFlow<LowContrastNotice?>(null)
+
+    init {
+        // 覆盖被清空时提醒随之失效：没有可撤销的东西了
+        viewModelScope.launch {
+            prefs.collect { pref ->
+                val notice = lowContrastNotice.value
+                if (notice != null && pref.roleOverrides.keys.none { it == notice.roleName }) {
+                    lowContrastNotice.value = null
+                }
+            }
+        }
+    }
+
+    fun showLowContrastNotice(roleName: String) {
+        lowContrastNotice.value = LowContrastNotice(roleName)
+    }
+
+    /** 保留：关闭提醒，颜色维持生效。 */
+    fun keepLowContrastColor() {
+        lowContrastNotice.value = null
+    }
+
+    /** 撤销：清掉该角色的覆盖值，回到派生/基底颜色。 */
+    fun revertLowContrastColor() {
+        val notice = lowContrastNotice.value ?: return
+        lowContrastNotice.value = null
+        viewModelScope.launch { prefsRepo.clearRoleOverride(notice.roleName) }
+    }
 
     val transactions: StateFlow<List<TransactionEntity>> = txRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

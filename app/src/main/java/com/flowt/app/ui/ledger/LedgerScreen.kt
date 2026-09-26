@@ -40,7 +40,7 @@ import com.flowt.app.data.db.TransactionEntity
 import com.flowt.app.metrics.MetricValue
 import com.flowt.app.metrics.formatAmount
 import com.flowt.app.ui.components.MetricCard
-import com.flowt.app.ui.theme.expenseColor
+import com.flowt.app.ui.theme.FlowtColors
 import com.flowt.app.ui.theme.subtleTextColor
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -170,7 +170,7 @@ private fun DayCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = FlowtColors.current.ledgerCardBackground,
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
@@ -239,17 +239,17 @@ private fun TxRowItem(
     // clickable 是把这两层接好了才"自带涟漪"；这里手动接，所以两者都能要 ——
     // 既有水波纹，又能从 onTap 拿到点击坐标（圆心位置）。
     val interactionSource = remember { MutableInteractionSource() }
-    // 涟漪颜色用 onPrimaryContainer：卡片底色正是 primaryContainer，这样对比才够
-    val rippleColor = MaterialTheme.colorScheme.onPrimaryContainer
+    // 涟漪用条目文字色：条目底是记账页底色（两者同源），文字色与它配对，对比才够
+    val rippleColor = FlowtColors.current.ledgerItemText
     val ripple = remember { ripple(color = rippleColor) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
-            // 与编辑页背景同一个颜色角色（primaryContainer）：
+            // 与编辑页背景同一个颜色位（记账页底色）：
             // 点它进编辑页时，揭示的圆从这张卡片长出来，起点与终点颜色一致，过渡是连续的。
-            .background(MaterialTheme.colorScheme.primaryContainer)
+            .background(FlowtColors.current.ledgerItemBackground)
             .indication(interactionSource = interactionSource, indication = ripple)
             .onGloballyPositioned { layoutCoords ->
                 val bounds = layoutCoords.boundsInRoot()
@@ -294,7 +294,7 @@ private fun TxRowItem(
             Text(
                 text = row.categoryPath,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = FlowtColors.current.ledgerItemText,
             )
             // 时间与备注合成一行副标题：时间必显示，备注有才拼上
             val time = TIME_FORMAT.format(Date(row.entity.timestamp))
@@ -302,14 +302,14 @@ private fun TxRowItem(
             Text(
                 text = if (note.isNullOrBlank()) time else "$time | $note",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                color = FlowtColors.current.ledgerItemText.copy(alpha = 0.7f),
             )
         }
         Text(
             text = "-${formatAmount(row.entity.amountCents).removePrefix("¥")}",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
-            color = expenseColor(),
+            color = FlowtColors.current.expenseAmount,
         )
     }
 }

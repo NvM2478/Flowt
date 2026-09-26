@@ -43,6 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -68,6 +69,7 @@ import com.flowt.app.data.bill.ImportMode
 import com.flowt.app.data.bill.localDayEnd
 import com.flowt.app.data.bill.localDayStart
 import com.flowt.app.ui.AppViewModel
+import com.flowt.app.ui.theme.FlowtColors
 import com.flowt.app.ui.theme.subtleTextColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -109,6 +111,11 @@ fun DataSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = FlowtColors.current.navigationBarBackground,
+                    titleContentColor = FlowtColors.current.navigationBarText,
+                    navigationIconContentColor = FlowtColors.current.navigationBarText,
+                ),
                 title = { Text("数据管理") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -253,10 +260,10 @@ private fun EntryHeader(
     enabled: Boolean = true,
 ) {
     // Material 的禁用态：内容色降到 38% 不透明度，与系统其他禁用控件一致
-    val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    val disabledColor = FlowtColors.current.textPrimary.copy(alpha = 0.38f)
     val titleColor = when {
         !enabled -> disabledColor
-        danger -> MaterialTheme.colorScheme.error
+        danger -> FlowtColors.current.dangerAccent
         else -> Color.Unspecified
     }
     val subtitleColor = if (enabled) subtleTextColor() else disabledColor
@@ -640,7 +647,7 @@ private fun UndoImportDialog(
                     color = if (countdown > 0) {
                         subtleTextColor()
                     } else {
-                        MaterialTheme.colorScheme.error
+                        FlowtColors.current.dangerAccent
                     },
                 )
             }
@@ -750,7 +757,7 @@ private fun ClearDataDialog(
                     color = if (countdown > 0) {
                         subtleTextColor()
                     } else {
-                        MaterialTheme.colorScheme.error
+                        FlowtColors.current.dangerAccent
                     },
                 )
             }

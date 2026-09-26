@@ -1,21 +1,20 @@
 package com.flowt.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,10 +25,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.flowt.app.data.db.TransactionEntity
 import com.flowt.app.ui.entry.EntryRevealHost
 import com.flowt.app.ui.ledger.LedgerScreen
@@ -37,6 +42,7 @@ import com.flowt.app.ui.report.ReportScreen
 import com.flowt.app.ui.settings.SettingsPage
 import com.flowt.app.ui.settings.SettingsScreen
 import com.flowt.app.ui.settings.SettingsSubPageHost
+import com.flowt.app.ui.theme.FlowtColors
 import kotlinx.coroutines.launch
 
 private enum class AppTab(val label: String) {
@@ -90,6 +96,7 @@ fun FlowtApp(vm: AppViewModel) {
     val transactions by vm.transactions.collectAsState()
     val categories by vm.categories.collectAsState()
     val metrics by vm.metrics.collectAsState()
+    val lowContrastNotice by vm.lowContrastNotice.collectAsState()
     val scope = rememberCoroutineScope()
 
     val pagerState = rememberPagerState(pageCount = { AppTab.entries.size })
@@ -109,7 +116,9 @@ fun FlowtApp(vm: AppViewModel) {
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = FlowtColors.current.navigationBarBackground,
+                ) {
                     AppTab.entries.forEachIndexed { index, tab ->
                         NavigationBarItem(
                             selected = currentTab == tab,
@@ -118,6 +127,15 @@ fun FlowtApp(vm: AppViewModel) {
                             },
                             icon = {},
                             label = { Text(tab.label) },
+                            // 字色统一由「导航栏文字」角色控制：未选中自动淡化，
+                            // 选中实色（落在选中块上，与「导航栏选中块」搭配调整）
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = FlowtColors.current.navigationBarText,
+                                selectedTextColor = FlowtColors.current.navigationBarText,
+                                unselectedIconColor = FlowtColors.current.navigationBarText.copy(alpha = 0.6f),
+                                unselectedTextColor = FlowtColors.current.navigationBarText.copy(alpha = 0.6f),
+                                indicatorColor = FlowtColors.current.navigationIndicator,
+                            ),
                         )
                     }
                 }
@@ -130,18 +148,26 @@ fun FlowtApp(vm: AppViewModel) {
                         fabCenterInRoot?.let { revealCenter = it }
                         entryOpen = true
                     },
+                    // 记账页/流水条目中性化后，主色不再有默认消费槽 —— FAB 显式用主色，
+                    // 让它成为界面上稳定的强调点（现代记账 app 的惯例）
+                    containerColor = FlowtColors.current.accentBackground,
+                    contentColor = FlowtColors.current.accentButtonText,
                     // Material 3 的 FAB 默认是圆角方形；这里强制正圆，
                     // 与"记账页从 FAB 位置长成一个圆"的揭示动画形状一致。
                     shape = CircleShape,
-                    modifier = Modifier.onGloballyPositioned { coords ->
-                        val bounds = coords.boundsInRoot()
-                        fabCenterInRoot = Offset(
-                            x = (bounds.left + bounds.right) / 2f,
-                            y = (bounds.top + bounds.bottom) / 2f,
-                        )
-                    },
+                    modifier = Modifier
+                        .semantics { contentDescription = "记一笔" }
+                        .onGloballyPositioned { coords ->
+                            val bounds = coords.boundsInRoot()
+                            fabCenterInRoot = Offset(
+                                x = (bounds.left + bounds.right) / 2f,
+                                y = (bounds.top + bounds.bottom) / 2f,
+                            )
+                        },
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = "记一笔")
+                    // 加号刻意用记账页底色：揭场圆从 FAB 中心长出来时，最先被圆盖住的就是
+                    // 加号 —— 两者同色，加号无缝"溶"进圆里，起跳零跳变（真机实测确认的衔接方案）
+                    PlusGlyph(color = FlowtColors.current.entryPageBackground)
                 }
             },
         ) { innerPadding ->
@@ -229,7 +255,7 @@ fun FlowtApp(vm: AppViewModel) {
                             }
                         },
                     ) {
-                        Text("删除", color = MaterialTheme.colorScheme.error)
+                        Text("删除", color = FlowtColors.current.dangerAccent)
                     }
                 },
                 dismissButton = {
@@ -251,6 +277,42 @@ fun FlowtApp(vm: AppViewModel) {
                 }
                 returnTabOnClose = null
             },
+        )
+
+        // 低对比度颜色的待决胶囊：悬浮于一切页面之上（含二级页），
+        // 用户可以带着它浏览各页面的实际效果，表态前不消失
+        lowContrastNotice?.let {
+            LowContrastBanner(
+                onKeep = vm::keepLowContrastColor,
+                onRevert = vm::revertLowContrastColor,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
+    }
+}
+
+/**
+ * FAB 的加号：Material 图标是笔画固定的矢量，没有"调粗"的余地，所以自绘。
+ * 尺寸（26dp）和线宽（2.5dp）都可控，圆头端点与 Material 图标的观感一致。
+ */
+@Composable
+private fun PlusGlyph(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(20.dp)) {
+        val strokeWidth = 3.dp.toPx()
+        val half = (size.minDimension - strokeWidth) / 2f
+        drawLine(
+            color = color,
+            start = Offset(center.x - half, center.y),
+            end = Offset(center.x + half, center.y),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = color,
+            start = Offset(center.x, center.y - half),
+            end = Offset(center.x, center.y + half),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round,
         )
     }
 }

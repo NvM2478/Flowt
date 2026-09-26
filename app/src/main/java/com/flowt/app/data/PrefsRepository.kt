@@ -20,13 +20,23 @@ enum class BrightnessMode { SYSTEM, LIGHT, DARK }
 /**
  * 用户保存的自定义配色方案。
  *
- * [overrides] 存的是**完整的 8 个角色颜色值**，所以它是自包含的：
+ * [overrides] 存的是**完整的全部角色颜色值**，所以它是自包含的：
  * 删除某个保存方案不会影响正在使用的主题，也不需要回退到任何基底。
+ *
+ * [derivedOnRoles] 记录保存时刻处于**派生态**的配对文字角色（见 RoleKind.ON）：
+ * 应用方案时这些角色不写覆盖值，而是从方案内的底色值实时重算 ——
+ * 这样"进了方案之后再改底色，配对文字照样自动跟"。
+ * 旧版本保存的方案没有这个字段（空集），全部按覆盖值处理，行为与旧版一致。
  */
 data class SavedTheme(
     val name: String,
     val overrides: Map<String, Int>,
-)
+    val derivedOnRoles: Set<String> = emptySet(),
+) {
+    /** 应用方案时真正写入的覆盖表：完整值剔除派生态角色。 */
+    fun effectiveOverrides(): Map<String, Int> =
+        if (derivedOnRoles.isEmpty()) overrides else overrides.filterKeys { it !in derivedOnRoles }
+}
 
 /**
  * 一次已完成的导入，用于「这个文件已经导过了」的提醒。
@@ -71,8 +81,10 @@ data class AppPrefs(
      * Set 表达不了顺序，也就无法还原用户排好的版。
      */
     val disabledMetrics: List<String> = LedgerMetric.defaultDisabledIds(),
-    /** 当前选中的配色：内置变体 id（"violet@dark"）或 "system_dynamic" 或 "saved:<名称>"。 */
-    val selectedThemeId: String = "violet@light",
+    /** 当前选中的配色方案：内置方案 id（"violet"）或 "system_dynamic" 或 "saved:<名称>"。 */
+    val selectedThemeId: String = "violet",
+    /** 明暗主题：跟随系统 / 强制浅色 / 强制深色。对「我的方案」（固定颜色）不生效。 */
+    val brightnessMode: BrightnessMode = BrightnessMode.LIGHT,
     /** 用户保存的方案。 */
     val savedThemes: List<SavedTheme> = emptyList(),
     /** 当前临时生效的角色覆盖（未保存的微调）。 */
@@ -87,6 +99,7 @@ class PrefsRepository(private val context: Context) {
         val ENABLED_METRICS = stringPreferencesKey("enabled_metrics_ordered")
         val DISABLED_METRICS = stringPreferencesKey("disabled_metrics_ordered")
         val SELECTED_THEME = stringPreferencesKey("selected_theme_id")
+        val BRIGHTNESS = stringPreferencesKey("brightness_mode_v2")
         val SAVED_THEMES = stringSetPreferencesKey("saved_themes")
         val ROLE_OVERRIDES = stringSetPreferencesKey("role_overrides")
         val IMPORTED_FILES = stringSetPreferencesKey("imported_files")
@@ -97,12 +110,23 @@ class PrefsRepository(private val context: Context) {
     }
 
     val prefs: Flow<AppPrefs> = context.dataStore.data.map { p ->
+        val selected = p[Keys.SELECTED_THEME] ?: migrateLegacySelection(p)
+        // 旧格式把明暗编码进方案 id（"violet@dark"），拆回两个独立字段
+        val themeId = selected.substringBefore('@')
+        val variantBrightness = when (selected.substringAfter('@', "")) {
+            "dark" -> BrightnessMode.DARK
+            "light" -> BrightnessMode.LIGHT
+            else -> null
+        }
         AppPrefs(
             enabledMetrics = decodeMetrics(p[Keys.ENABLED_METRICS])
                 ?: LedgerMetric.defaultEnabledIds().toList(),
             disabledMetrics = decodeMetrics(p[Keys.DISABLED_METRICS])
                 ?: LedgerMetric.defaultDisabledIds(),
-            selectedThemeId = p[Keys.SELECTED_THEME] ?: migrateLegacySelection(p),
+            selectedThemeId = themeId,
+            brightnessMode = p[Keys.BRIGHTNESS]?.let {
+                runCatching { BrightnessMode.valueOf(it) }.getOrNull()
+            } ?: variantBrightness ?: BrightnessMode.SYSTEM,
             savedThemes = decodeSavedThemes(p[Keys.SAVED_THEMES]),
             roleOverrides = decodeOverrides(p[Keys.ROLE_OVERRIDES]),
             importedFiles = decodeImportedFiles(p[Keys.IMPORTED_FILES]),
@@ -133,6 +157,19 @@ class PrefsRepository(private val context: Context) {
         }
     }
 
+    /**
+     * 切换明暗主题（跟随系统 / 浅色 / 深色）。对「我的方案」不生效。
+     * [clearUnsaved] 由界面侧按"实际明暗是否变化"决定：跟随系统切浅色且系统本是
+     * 浅色 = 什么都没变，微调继续有效；实际发生明暗变化时放弃未保存的微调
+     * （针对当前明暗调的颜色，换一个明暗观感完全不同），界面侧负责提前确认。
+     */
+    suspend fun setBrightnessMode(mode: BrightnessMode, clearUnsaved: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.BRIGHTNESS] = mode.name
+            if (clearUnsaved) prefs.remove(Keys.ROLE_OVERRIDES)
+        }
+    }
+
     /** 覆盖单个颜色角色的颜色值（临时，未保存）。 */
     suspend fun setRoleOverride(roleName: String, argb: Int) {
         context.dataStore.edit { prefs ->
@@ -154,17 +191,20 @@ class PrefsRepository(private val context: Context) {
     /**
      * 把当前的角色覆盖存成一个命名方案，并切换到它。
      *
-     * 若当前选中的是内置方案，会把该方案的基底色一并写进保存值 ——
-     * 这样保存下来的是一个**完整自包含**的配色，删掉它也不影响任何东西。
+     * [completeOverrides] 存全部角色的**生效值**（含派生算出的），保证方案预览自包含；
+     * [derivedOnRoles] 标出其中处于派生态的配对文字角色 —— 应用方案时它们不写覆盖值，
+     * 而是从方案内的底色值实时重算（见 [SavedTheme.effectiveOverrides]）。
      */
     suspend fun saveCurrentAsTheme(
         name: String,
         completeOverrides: Map<String, Int>,
+        derivedOnRoles: Set<String> = emptySet(),
     ) {
         context.dataStore.edit { prefs ->
             val existing = decodeSavedThemes(prefs[Keys.SAVED_THEMES])
                 .filterNot { it.name == name } // 同名覆盖
-            val updated = existing + SavedTheme(name = name, overrides = completeOverrides)
+            val updated = existing +
+                SavedTheme(name = name, overrides = completeOverrides, derivedOnRoles = derivedOnRoles)
             prefs[Keys.SAVED_THEMES] = encodeSavedThemes(updated)
             prefs[Keys.SELECTED_THEME] = "$SAVED_PREFIX$name"
             prefs.remove(Keys.ROLE_OVERRIDES)
@@ -225,25 +265,6 @@ class PrefsRepository(private val context: Context) {
             name to value
         }.toMap()
 
-    private fun encodeSavedThemes(themes: List<SavedTheme>): Set<String> =
-        themes.map { theme ->
-            val pairs = theme.overrides.entries.joinToString(",") { "${it.key}=${it.value}" }
-            "${theme.name}|$pairs"
-        }.toSet()
-
-    private fun decodeSavedThemes(raw: Set<String>?): List<SavedTheme> =
-        raw.orEmpty().mapNotNull { entry ->
-            val name = entry.substringBefore('|', "")
-            val rest = entry.substringAfter('|', "")
-            if (name.isEmpty()) return@mapNotNull null
-            val overrides = rest.split(',').mapNotNull { pair ->
-                val key = pair.substringBefore('=', "")
-                val value = pair.substringAfter('=', "").toIntOrNull()
-                if (key.isEmpty() || value == null) null else key to value
-            }.toMap()
-            SavedTheme(name = name, overrides = overrides)
-        }.sortedBy { it.name }
-
     /** 文件名放最后一段：配合 split 的 limit，文件名里即便含 "|" 也不会被切断。 */
     private fun encodeImportedFiles(records: List<ImportedFileRecord>): Set<String> =
         records.map { "${it.hash}|${it.importedAt}|${it.count}|${it.batchSource}|${it.fileName}" }.toSet()
@@ -278,3 +299,54 @@ class PrefsRepository(private val context: Context) {
         const val SAVED_PREFIX = "saved:"
     }
 }
+
+/**
+ * 当前应该参与配色计算的角色覆盖表。
+ *
+ * 三个来源按优先级叠加（后写优先）：基底主题无方案值；
+ * 保存方案的生效值（[SavedTheme.effectiveOverrides]，派生态角色不在此列，回派生计算）；
+ * 当前未保存的临时微调压在最上面。
+ */
+fun AppPrefs.combinedRoleOverrides(): Map<String, Int> {
+    val saved = if (selectedThemeId.startsWith(PrefsRepository.SAVED_PREFIX)) {
+        savedThemes.firstOrNull {
+            it.name == selectedThemeId.removePrefix(PrefsRepository.SAVED_PREFIX)
+        }
+    } else {
+        null
+    }
+    return saved?.effectiveOverrides().orEmpty() + roleOverrides
+}
+
+/** 保存方案 → 存储字符串："名称|k=v,k=v|derived=a,b"，第三段（派生态角色）可空。 */
+internal fun encodeSavedThemes(themes: List<SavedTheme>): Set<String> =
+    themes.map { theme ->
+        val pairs = theme.overrides.entries.joinToString(",") { "${it.key}=${it.value}" }
+        val derived = theme.derivedOnRoles.joinToString(",")
+        if (derived.isEmpty()) "${theme.name}|$pairs" else "${theme.name}|$pairs|derived=$derived"
+    }.toSet()
+
+/**
+ * 存储字符串 → 保存方案。
+ *
+ * 兼容旧格式（只有"名称|k=v"两段）：没有派生段的方案全部按覆盖值处理，
+ * 行为与旧版本一致。名字取第一段、值对限定在第二段内，名字里含 "|" 只会
+ * 截短名字，不会破坏其他条目的解析。
+ */
+internal fun decodeSavedThemes(raw: Set<String>?): List<SavedTheme> =
+    raw.orEmpty().mapNotNull { entry ->
+        val name = entry.substringBefore('|', "")
+        if (name.isEmpty()) return@mapNotNull null
+        val rest = entry.substringAfter('|', "").substringBefore('|')
+        val derived = entry.substringAfter("|derived=", "")
+            .substringBefore('|')
+            .split(',')
+            .filter { it.isNotBlank() }
+            .toSet()
+        val overrides = rest.split(',').mapNotNull { pair ->
+            val key = pair.substringBefore('=', "")
+            val value = pair.substringAfter('=', "").toIntOrNull()
+            if (key.isEmpty() || value == null) null else key to value
+        }.toMap()
+        SavedTheme(name = name, overrides = overrides, derivedOnRoles = derived)
+    }.sortedBy { it.name }
