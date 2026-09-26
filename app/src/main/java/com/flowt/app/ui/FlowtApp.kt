@@ -211,6 +211,7 @@ fun FlowtApp(vm: AppViewModel) {
                         onOpenMetrics = { settingsPage = SettingsPage.Metrics },
                         onOpenAppearance = { settingsPage = SettingsPage.Appearance },
                         onOpenData = { settingsPage = SettingsPage.Data },
+                        onOpenAbout = { settingsPage = SettingsPage.About },
                     )
                 }
             }

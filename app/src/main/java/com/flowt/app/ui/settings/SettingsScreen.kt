@@ -37,6 +37,7 @@ fun SettingsScreen(
     onOpenMetrics: () -> Unit,
     onOpenAppearance: () -> Unit,
     onOpenData: () -> Unit,
+    onOpenAbout: () -> Unit,
 ) {
 
     LazyColumn(
@@ -69,7 +70,7 @@ fun SettingsScreen(
             SettingsEntryGroup {
                 SettingsEntry(
                     title = "关于 Flowt",
-                    onClick = null,
+                    onClick = onOpenAbout,
                 )
             }
         }

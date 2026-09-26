@@ -24,6 +24,7 @@ enum class SettingsPage {
     Metrics,
     Appearance,
     Data,
+    About,
 }
 
 /**
@@ -88,6 +89,8 @@ fun SettingsSubPageHost(
                     importOpen = true
                 },
             )
+
+            SettingsPage.About -> AboutScreen(onBack = onClose)
 
             SettingsPage.Root -> Unit
         }
